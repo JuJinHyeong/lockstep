@@ -67,6 +67,7 @@ class SimpleGame(arcade.Window):
             try:
                 data = self.socket.recv(1024).decode('utf-8')
                 if data:
+                    print(data)
                     player_id, x, y = data.split(',')
                     self.players[player_id] = (float(x), float(y))
             except socket.error:
@@ -83,22 +84,19 @@ class SimpleGame(arcade.Window):
     def on_update(self, delta_time):
         """키 입력에 따라 플레이어 이동"""
         
-        dirty = False
+        dx = 0
+        dy = 0
         if arcade.key.UP in self.pressed_key:
-            self.player.move(0, 200 * delta_time)
-            dirty = True
+            dy = 200 * delta_time
         if arcade.key.DOWN in self.pressed_key:
-            self.player.move(0, -200 * delta_time)
-            dirty = True
+            dy = -200 * delta_time
         if arcade.key.LEFT in self.pressed_key:
-            self.player.move(-200 * delta_time, 0)
-            dirty = True
+            dx = -200 * delta_time
         if arcade.key.RIGHT in self.pressed_key:
-            self.player.move(200 * delta_time, 0)
-            dirty = True
+            dx = 200 * delta_time
 
-        if dirty:
-            self.player.send_position()
+        if dx or dy:
+            self.player.move(dx, dy)
         
     def on_draw(self):
         """플레이어와 다른 캐릭터를 화면에 그리기"""
