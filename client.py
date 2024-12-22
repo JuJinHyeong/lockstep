@@ -1,4 +1,4 @@
-import arcade
+import pygame
 import socket
 import threading
 
@@ -10,7 +10,6 @@ SCREEN_TITLE = "Player Class with Networking"
 # 서버 설정
 HOST = '127.0.0.1'
 PORT = 9000
-
 
 class Player:
     """플레이어의 상태 및 행동을 관리하는 클래스"""
@@ -34,19 +33,22 @@ class Player:
         except socket.error:
             print("Failed to send data")
 
-class SimpleGame(arcade.Window):
+class SimpleGame:
     """게임 전체 로직을 관리하는 클래스"""
     def __init__(self):
-        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
-        self.socket = self.connect_to_server()
+        pygame.init()
+        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        pygame.display.set_caption(SCREEN_TITLE)
+        self.clock = pygame.time.Clock()
 
-        self.pressed_key = set()
+        self.socket = self.connect_to_server()
 
         self.player = Player(player_id=id(self), x=100, y=100, socket=self.socket)
         self.players = {}
 
-        # 데이터 수신 스레드 시작
         self.running = True
+
+        # 데이터 수신 스레드 시작
         self.receive_thread = threading.Thread(target=self.receive_data, daemon=True)
         self.receive_thread.start()
 
@@ -59,7 +61,7 @@ class SimpleGame(arcade.Window):
             return client_socket
         except ConnectionRefusedError:
             print("Failed to connect to server")
-            self.close()
+            self.running = False
 
     def receive_data(self):
         """서버로부터 데이터를 수신하여 다른 플레이어의 상태를 업데이트"""
@@ -74,39 +76,36 @@ class SimpleGame(arcade.Window):
                 break
         print("Stopped receiving data")
 
-    def on_key_press(self, key, modifiers):
-        """입력 키 추가"""
-        self.pressed_key.add(key)
-
-    def on_key_release(self, key, modifiers):
-        return self.pressed_key.remove(key)
-
-    def on_update(self, delta_time):
+    def handle_input(self):
         """키 입력에 따라 플레이어 이동"""
-        
+        keys = pygame.key.get_pressed()
         dx = 0
         dy = 0
-        if arcade.key.UP in self.pressed_key:
-            dy = 200 * delta_time
-        if arcade.key.DOWN in self.pressed_key:
-            dy = -200 * delta_time
-        if arcade.key.LEFT in self.pressed_key:
-            dx = -200 * delta_time
-        if arcade.key.RIGHT in self.pressed_key:
-            dx = 200 * delta_time
+
+        if keys[pygame.K_UP]:
+            dy = -5
+        if keys[pygame.K_DOWN]:
+            dy = 5
+        if keys[pygame.K_LEFT]:
+            dx = -5
+        if keys[pygame.K_RIGHT]:
+            dx = 5
 
         if dx or dy:
             self.player.move(dx, dy)
-        
-    def on_draw(self):
+
+    def draw(self):
         """플레이어와 다른 캐릭터를 화면에 그리기"""
-        arcade.start_render()
+        self.screen.fill((0, 0, 0))  # 배경색 검정
+
         # 본인 플레이어
-        arcade.draw_circle_filled(self.player.x, self.player.y, 20, arcade.color.BLUE)
+        pygame.draw.circle(self.screen, (0, 0, 255), (int(self.player.x), int(self.player.y)), 20)
 
         # 다른 플레이어들
         for player_id, (x, y) in self.players.items():
-            arcade.draw_circle_filled(x, y, 20, arcade.color.RED)
+            pygame.draw.circle(self.screen, (255, 0, 0), (int(x), int(y)), 20)
+
+        pygame.display.flip()
 
     def close(self):
         """게임 종료 처리"""
@@ -116,9 +115,22 @@ class SimpleGame(arcade.Window):
             self.socket.close()
         except socket.error:
             pass
-        arcade.exit()
+        pygame.quit()
 
+    def run(self):
+        """메인 게임 루프"""
+        while self.running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
+
+            self.handle_input()
+            self.draw()
+            self.clock.tick(60)
+
+        self.close()
 
 if __name__ == "__main__":
-    SimpleGame()
-    arcade.run()
+    game = SimpleGame()
+    if game.running:
+        game.run()

@@ -12,7 +12,6 @@ def handle_client(client_socket):
             message = client_socket.recv(1024).decode('utf-8')
             if not message:
                 break
-            print(f"Received: {message}")
             broadcast(message, client_socket)
         except ConnectionResetError:
             break
